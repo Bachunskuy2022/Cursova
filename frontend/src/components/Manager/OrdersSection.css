@@ -1,0 +1,200 @@
+.cards {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  
+  .card {
+    background: white;
+    padding: 1rem;
+    border-radius: 10px;
+    flex: 1;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.05);
+    color: #333;
+    font-size: 1rem;
+  }
+  
+  .card strong {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 1.5rem;
+  }
+  
+  .table-section {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.05);
+    color: #333;
+  }
+  
+  .table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+  
+  .table-header input {
+    padding: 0.4rem 0.8rem;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+  }
+  
+  .table-scroll {
+    overflow-x: auto;
+    width: 100%;
+  }
+  
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  
+  th, td {
+    padding: 0.8rem;
+    text-align: left;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  
+  .pagination {
+    margin-top: 1rem;
+    display: flex;
+    gap: 0.4rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  .pagination button {
+    padding: 0.3rem 0.8rem;
+    border: 1px solid #ccc;
+    background-color: white;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background-color 0.2s ease;
+  }
+  
+  .pagination button.active {
+    background-color: #5762D5;
+    color: white;
+    border-color: #5762D5;
+  }
+  
+  .pagination button:hover:not(.active) {
+    background-color: #eaeaea;
+  }
+  
+  .dots {
+    padding: 0.5rem;
+    color: #aaa;
+    user-select: none;
+    pointer-events: none;
+  }
+  
+  /* Autocomplete and form styles for order creation modal */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+  }
+  
+  .modal-card {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 0 16px rgba(0, 0, 0, 0.2);
+    min-width: 300px;
+    max-width: 800px;
+    text-align: center;
+  }
+  
+  .modal-card h3 {
+    margin-bottom: 1rem;
+    font-size: 22px;
+    font-weight: 600;
+    color: #333;
+  }
+  
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 20px;
+  }
+  
+  .form-grid input,
+  .form-grid select {
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 16px;
+  }
+  
+  .form-grid input:focus,
+  .form-grid select:focus {
+    border-color: #5762D5;
+    outline: none;
+  }
+  
+  .autocomplete {
+    position: relative;
+    width: 100%;
+  }
+  
+  .autocomplete-list {
+    margin-top: 2px;
+    padding: 0;
+    list-style: none;
+    border: 1px solid #ddd;
+    max-height: 150px;
+    overflow-y: auto;
+    border-radius: 6px;
+    background-color: white;
+    position: absolute;
+    z-index: 100;
+    width: 100%;
+  }
+  
+  .autocomplete-list li {
+    padding: 10px;
+    cursor: pointer;
+  }
+  
+  .autocomplete-list li:hover {
+    background-color: #f0f0f0;
+  }
+  
+  .button-row {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+  }
+  
+  .add-button {
+    background-color: #5762D5;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  
+  .add-button:hover {
+    background-color: #424eb5;
+  }
+  
+  .cancel-button {
+    background-color: #eee;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  

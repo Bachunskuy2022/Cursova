@@ -1,0 +1,79 @@
+.vehicle-cards-container {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* 🔧 рівно 3 колонки */
+  gap: 1.5rem;
+  align-items: start; /* дозволяє карткам мати різну висоту */
+  margin-top: 1rem;
+}
+
+
+.vehicle-card {
+  background-color: #f8f9ff;
+  border-radius: 1rem;
+  padding: 0.7rem 0.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.4s ease;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+
+}
+.vehicle-card:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 14px rgba(87, 98, 213, 0.2);
+  border-color: #5762d5;
+}
+/* коли картка розгорнута */
+.vehicle-card.expanded {
+  height: 650px; 
+  grid-row: span 3; /* займає 2 рядки — ось головна магія */
+  border: 2px ;
+}
+
+.vehicle-details {
+  margin-top: 1rem;
+  font-size: 0.95rem;
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.toggle-button {
+  margin-top: 0.6rem;
+  padding: 0.6rem;
+  background-color: #5762d5;
+  color: white;
+  border: none;
+  border-radius: 0.8rem;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.toggle-button:hover {
+  background-color: #3e47ac;
+}
+
+.vehicle-card:not(.expanded) h3,
+.vehicle-card:not(.expanded) p,
+.vehicle-card:not(.expanded) strong {
+  margin: 0.8rem 0 !important;
+  line-height: 1.2 !important;
+}
+
+.vehicle-card.expanded h3,
+.vehicle-card.expanded p,
+.vehicle-card.expanded strong {
+  margin: 0.5rem 0;
+  line-height: 1.5;
+}

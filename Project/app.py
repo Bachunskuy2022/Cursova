@@ -86,15 +86,15 @@ def get_orders_count():
     query = text("SELECT COUNT(*) AS total FROM Orders")
     result = db.session.execute(query).scalar()
     return jsonify({'total': result})
+from flask import request
+from sqlalchemy import text
 
 @app.route('/orders', methods=['GET'])
 def get_orders():
-    page = int(request.args.get('page', 1))
-    limit = int(request.args.get('limit', 50))
-    offset = (page - 1) * limit
-
-    query = text("""
+    search = request.args.get('search', '').strip()
+    base_query = """
         SELECT 
+            o.OrderId,
             o.OrderNumber,
             o.Distance,
             o.DeliveryTime,
@@ -107,7 +107,14 @@ def get_orders():
             oe.StartTime,
             oe.EndTime,
             e.Surname + ' ' + e.Name AS EmployeeName,
-            v.LicensePlate
+            e.Email AS EmployeeEmail,
+            v.LicensePlate,
+            (
+              SELECT STRING_AGG(p.Name + ' — ' + CAST(op.ProductCount AS NVARCHAR), ', ')
+              FROM OrderProducts op
+              JOIN Products p ON p.ProductId = op.ProductId
+              WHERE op.OrderId = o.OrderId
+            ) AS Products
         FROM Orders o
         JOIN Client c ON o.ClientId = c.ClientId
         JOIN OrderStatuses s ON o.StatusId = s.OrderStatusId
@@ -124,15 +131,54 @@ def get_orders():
         LEFT JOIN OrderExecutions oe ON oe.OrderId = o.OrderId
         LEFT JOIN Employees e ON oe.EmployeeId = e.EmployeeId
         LEFT JOIN Vehicles v ON oe.VehicleId = v.VehiclesId
-        ORDER BY o.OrderId
-        OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
-    """)
+        WHERE (:search = '' OR 
+            o.OrderNumber LIKE :searchLike OR
+            c.Name LIKE :searchLike OR
+            c.Surname LIKE :searchLike OR
+            e.Name LIKE :searchLike OR
+            e.Surname LIKE :searchLike OR
+            ul.Address LIKE :searchLike OR
+            dl.Address LIKE :searchLike
+        )
+    """
 
-    result = db.session.execute(query, {'offset': offset, 'limit': limit}).fetchall()
+    count_query = """
+        SELECT COUNT(*)
+            FROM Orders o
+            JOIN Client c ON o.ClientId = c.ClientId
+            JOIN OrderStatuses s ON o.StatusId = s.OrderStatusId
+            LEFT JOIN OrderExecutions oe ON oe.OrderId = o.OrderId
+            LEFT JOIN Employees e ON oe.EmployeeId = e.EmployeeId
+            LEFT JOIN Vehicles v ON oe.VehicleId = v.VehiclesId
+            JOIN Locations ul ON o.UploadLocationId = ul.LocationId
+            JOIN Locations dl ON o.DownloadLocationId = dl.LocationId
+            WHERE (:search = '' OR 
+                o.OrderNumber LIKE :searchLike OR
+                c.Name LIKE :searchLike OR
+                c.Surname LIKE :searchLike OR
+                e.Name LIKE :searchLike OR
+                e.Surname LIKE :searchLike OR
+                ul.Address LIKE :searchLike OR
+                dl.Address LIKE :searchLike OR
+                o.OrderDate LIKE :searchLike OR
+                oe.StartTime LIKE :searchLike OR
+                oe.EndTime LIKE :searchLike OR
+                s.OrderStatus LIKE :searchLike OR
+                CAST(o.Price AS NVARCHAR) LIKE :searchLike OR
+                CAST(o.Distance AS NVARCHAR) LIKE :searchLike OR
+                CAST(o.DeliveryTime AS NVARCHAR) LIKE :searchLike OR
+                v.LicensePlate LIKE :searchLike
+            )
+    """
+
+    params = {
+        'search': search,
+        'searchLike': f'%{search}%',
+    }
+
+    result = db.session.execute(text(base_query), params).fetchall()
     orders = [dict(row._mapping) for row in result]
-
-    count_query = text("SELECT COUNT(*) FROM Orders")
-    total_count = db.session.execute(count_query).scalar()
+    total_count = db.session.execute(text(count_query), params).scalar()
 
     return jsonify({'orders': orders, 'totalCount': total_count})
 
@@ -184,6 +230,7 @@ def add_driver():
 def get_vehicles():
     query = text("""
         SELECT 
+            v.VehiclesId,
             v.LicensePlate,
             v.VinNumber,
             v.Mileage,

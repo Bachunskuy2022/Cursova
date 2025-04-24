@@ -1,0 +1,90 @@
+body {
+  margin: 0;
+  background-color: #f5f7fa;
+}
+
+.dashboard-container {
+  display: flex;
+  height: 100vh;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.sidebar {
+  width: 220px;
+  background-color: #f4f6fc;
+  padding: 2rem 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.logo {
+  font-size: 1.4rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+  color: #5762D5;
+}
+
+.menu {
+  list-style: none;
+  padding: 0;
+}
+
+.menu li {
+  margin: 1rem 0;
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  color: #333;
+  transition: background-color 0.3s ease;
+}
+
+.menu li.active,
+.menu li:hover {
+  background-color: #5762D5;
+  color: white;
+}
+
+.logout-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: transparent;
+  border: none;
+  color: #333;
+  font-size: 0.95rem;
+  cursor: pointer;
+  text-align: left;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  transition: background-color 0.3s ease;
+}
+
+.logout-button:hover {
+  background-color: #5762D5;
+  color: white;
+}
+
+.logout-icon {
+  width: 18px;
+  height: 18px;
+  filter: brightness(0) saturate(100%);
+}
+
+.logout-button:hover .logout-icon {
+  filter: brightness(0) invert(1);
+}
+
+.main-content {
+  flex-grow: 1;
+  padding: 2rem;
+  background-color: #f9fafe;
+  overflow-y: auto;
+  color: #212121;
+}
+
+h1 {
+  margin-bottom: 1.5rem;
+  font-size: 1.8rem;
+  font-weight: 500;
+}
