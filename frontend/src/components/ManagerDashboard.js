@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect,useRef} from 'react';
 import axios from 'axios';
 import './ManagerDashboard.css';
 import { useNavigate } from 'react-router-dom';
 import ExportData from './ExportData';
+import LocationAutocomplete from './LocationAutocomplete';
 
 const formatDate = (isoString) => {
   if (!isoString) return '—';
@@ -47,7 +48,22 @@ const ManagerDashboard = () => {
     const [totalPages, setTotalPages] = useState(1);
     const recordsPerPage = 50;
     const [totalOrdersCount, setTotalOrdersCount] = useState(0);
-    
+    const [newOrder, setNewOrder] = useState({
+      orderNumber: '',
+      orderDate: '',
+      deliveryTime: '',
+      price: '',
+      distance: '',
+      clientId: '',
+      employeeId: '',
+      uploadLocationId: '',
+      downloadLocationId: '',
+      statusId: 1
+    });
+    const [showNewOrderForm, setShowNewOrderForm] = useState(false);
+    const [clients, setClients] = useState([]);
+    const [employees, setEmployees] = useState([]);
+    const [locations, setLocations] = useState([]);
     const [drivers, setDrivers] = useState([]);
     const [vehicles, setVehicles] = useState([]);
     const [selectedVehicle, setSelectedVehicle] = useState(null);
@@ -58,6 +74,11 @@ const ManagerDashboard = () => {
     const [payments, setPayments] = useState([]);
     const [paymentPage, setPaymentPage] = useState(1);
     const [totalPaymentPages, setTotalPaymentPages] = useState(1);
+    const [searchEmployee, setSearchEmployee] = useState('');
+    const [showEmployeeList, setShowEmployeeList] = useState(false);
+    const [searchClient, setSearchClient] = useState('');
+    const [showClientList, setShowClientList] = useState(false);
+    
 
     const handleLogout = () => {
         localStorage.clear();
@@ -66,9 +87,19 @@ const ManagerDashboard = () => {
 
   useEffect(() => {
     axios.get('http://localhost:5000/orders/count')
-    .then(res => setTotalOrdersCount(res.data.total))
-    .catch(err => console.error('Помилка отримання кількості замовлень:', err));
+      .then(res => setTotalOrdersCount(res.data.total))
+      .catch(err => console.error('Помилка отримання кількості замовлень:', err));
+    axios.get('http://localhost:5000/clients').then(res => setClients(res.data));
+    axios.get('http://localhost:5000/employees').then(res => setEmployees(res.data));
 
+    //axios.get('http://localhost:5000/locations').then(res => setLocations(res.data));
+    axios.get('http://localhost:5000/orders/last-number')
+    .then(res => {
+      const nextNumber = parseInt(res.data.lastNumber || 0) + 1;
+      setNewOrder(order => ({ ...order, orderNumber: nextNumber }));
+    })
+    .catch(err => console.error('Помилка отримання останнього номера замовлення:', err));
+    
     if (activeSection === 'orders') {
         axios.get(`http://localhost:5000/orders?page=${currentPage}&limit=${recordsPerPage}`)
         .then(res => {
@@ -96,6 +127,39 @@ const ManagerDashboard = () => {
       
   }, [activeSection, currentPage, paymentPage]);;
 
+  const uploadRef = useRef();
+  const downloadRef = useRef();
+  
+  const handleCreateOrder = async () => {
+    try {
+      const uploadData = uploadRef.current.getLocationData();
+      const downloadData = downloadRef.current.getLocationData();
+  
+      const uploadResponse = await axios.post('http://localhost:5000/locations/smart-add', uploadData);
+      const downloadResponse = await axios.post('http://localhost:5000/locations/smart-add', downloadData);
+  
+      const uploadLocationId = uploadResponse.data.locationId;
+      const downloadLocationId = downloadResponse.data.locationId;
+  
+      const finalOrder = {
+        ...newOrder,
+        uploadLocationId,
+        downloadLocationId
+      };
+  
+      await axios.post('http://localhost:5000/orders', finalOrder);
+      setShowNewOrderForm(false);
+      setNewOrder({});
+      const refreshed = await axios.get(`http://localhost:5000/orders?page=${currentPage}&limit=50`);
+      setOrders(refreshed.data.orders);
+    } catch (err) {
+      console.error('Помилка створення замовлення:', err);
+      alert('Помилка створення замовлення');
+    }
+  };
+  
+
+
   const handleAddDriver = (e) => {
     e.preventDefault();
     if (!validateDriver(newDriver)) return;
@@ -119,7 +183,13 @@ const ManagerDashboard = () => {
           <li className={activeSection === 'drivers' ? 'active' : ''} onClick={() => setActiveSection('drivers')}>Водії</li>
           <li className={activeSection === 'vehicles' ? 'active' : ''} onClick={() => setActiveSection('vehicles')}>Автопарк</li>
           <li className={activeSection === 'payments' ? 'active' : ''} onClick={() => setActiveSection('payments')}>Оплати</li>
-          <li className={activeSection === 'export' ? 'active' : ''} onClick={() => setActiveSection('export')}>Експорт даних</li>
+          <li
+          className={activeSection === 'export' ? 'active' : ''}
+          onClick={() => setActiveSection('export')}
+        >
+          Експорт даних
+        </li>
+
         </ul>
         <button className="logout-button" onClick={handleLogout}>
           <img src="https://www.svgrepo.com/show/532551/logout-1.svg" alt="logout" className="logout-icon" />
@@ -146,6 +216,7 @@ const ManagerDashboard = () => {
               <div className="table-header">
                 <h2>Усі замовлення</h2>
                 <input type="text" placeholder="Пошук..." />
+                <button onClick={() => setShowNewOrderForm(true)} className="add-button">+ Нове замовлення</button>
               </div>
               <div className="table-scroll">
                 <table>
@@ -178,11 +249,7 @@ const ManagerDashboard = () => {
                 >
                     1
                 </button>
-
-                {/* ... після першої сторінки */}
                 {currentPage > 4 && <span className="dots">...</span>}
-
-                {/* Поточне "вікно" */}
                 {Array.from({ length: totalPages }, (_, i) => i + 1)
                     .filter(
                     page =>
@@ -200,11 +267,7 @@ const ManagerDashboard = () => {
                         {page}
                     </button>
                     ))}
-
-                {/* ... перед останньою сторінкою */}
                 {currentPage < totalPages - 3 && <span className="dots">...</span>}
-
-                {/* Остання сторінка */}
                 {totalPages > 1 && (
                     <button
                     className={currentPage === totalPages ? 'active' : ''}
@@ -217,7 +280,96 @@ const ManagerDashboard = () => {
         </div>
         </>
     )}
+    {showNewOrderForm && (
+              <div className="modal-overlay">
+                <div className="modal-card">
+                  <h3>Нове замовлення</h3>
+                  <div className="form-grid">
+                    <input type="text" placeholder="Номер замовлення" value={newOrder.orderNumber || ''} readOnly/>
+                    <input type="text" placeholder="Час доставки" onChange={(e) => setNewOrder({ ...newOrder, deliveryTime: e.target.value })} />
+                    <input type="number" placeholder="Ціна" onChange={(e) => setNewOrder({ ...newOrder, price: e.target.value })} />
+                    <input type="number" placeholder="Відстань" onChange={(e) => setNewOrder({ ...newOrder, distance: e.target.value })} />
+                    <div className="autocomplete">
+                      <input
+                        type="text"
+                        placeholder="Введіть ім’я або прізвище клієнта"
+                        value={searchClient}
+                        onChange={(e) => {
+                          setSearchClient(e.target.value);
+                          setShowClientList(true);
+                        }}
+                        onBlur={() => setTimeout(() => setShowClientList(false), 200)}
+                      />
+                      {showClientList && (
+                        <ul className="autocomplete-list">
+                        {clients
+                          .filter(c => {
+                            const [surname, name] = c.FullName.toLowerCase().split(' ');
+                            const query = searchClient.toLowerCase();
+                            return surname.startsWith(query) || name.startsWith(query);
+                          })
+                          .map(c => (
+                            <li
+                              key={c.ClientId}
+                              onClick={() => {
+                                setNewOrder({ ...newOrder, clientId: c.ClientId });
+                                setSearchClient(c.FullName);
+                                setShowClientList(false);
+                              }}
+                            >
+                              {c.FullName}
+                            </li>
+                          ))}
+                      </ul>
+                      
+                      )}
+                    </div>
 
+                    <div className="autocomplete">
+                      <input
+                        type="text"
+                        placeholder="Введіть ім’я або прізвище працівника"
+                        value={searchEmployee}
+                        onChange={(e) => {
+                          setSearchEmployee(e.target.value);
+                          setShowEmployeeList(true);
+                        }}
+                        onBlur={() => setTimeout(() => setShowEmployeeList(false), 200)} // щоб можна було клікнути
+                      />
+                      {showEmployeeList && (
+                        <ul className="autocomplete-list">
+                        {employees
+                          .filter(e => {
+                            const [surname, name] = e.FullName.toLowerCase().split(' ');
+                            const query = searchEmployee.toLowerCase();
+                            return surname.startsWith(query) || name.startsWith(query);
+                          })
+                          .map(e => (
+                            <li
+                              key={e.EmployeeId}
+                              onClick={() => {
+                                setNewOrder({ ...newOrder, employeeId: e.EmployeeId });
+                                setSearchEmployee(e.FullName);
+                                setShowEmployeeList(false);
+                              }}
+                            >
+                              {e.FullName}
+                            </li>
+                          ))}
+                      </ul>
+                      
+                      )}
+                    </div>
+                    <LocationAutocomplete label="Місце завантаження" ref={uploadRef} />
+                    <LocationAutocomplete label="Місце розвантаження" ref={downloadRef} />
+                  </div>
+                  <div className="button-row">
+                    <button onClick={handleCreateOrder}>Зберегти</button>
+                    <button className="cancel-button" onClick={() => setShowNewOrderForm(false)}>Скасувати</button>
+                  </div>
+                </div>
+              </div>
+            )}
         {/* Водії */}
         {activeSection === 'drivers' && (
           <div className="drivers-section">
@@ -346,52 +498,56 @@ const ManagerDashboard = () => {
 
                 {/* Пагінація */}
                 <div className="pagination">
-  {/* Перша сторінка */}
-  <button
-    className={paymentPage === 1 ? 'active' : ''}
-    onClick={() => setPaymentPage(1)}
-  >
-    1
-  </button>
+                  {/* Перша сторінка */}
+                  <button
+                    className={paymentPage === 1 ? 'active' : ''}
+                    onClick={() => setPaymentPage(1)}
+                  >
+                    1
+                  </button>
 
-  {/* ... після першої сторінки */}
-  {paymentPage > 4 && <span className="dots">...</span>}
+                  {/* ... після першої сторінки */}
+                  {paymentPage > 4 && <span className="dots">...</span>}
 
-  {/* Поточне "вікно" */}
-  {Array.from({ length: totalPaymentPages }, (_, i) => i + 1)
-    .filter(
-      page =>
-        page !== 1 &&
-        page !== totalPaymentPages &&
-        page >= paymentPage - 2 &&
-        page <= paymentPage + 2
-    )
-    .map(page => (
-      <button
-        key={page}
-        className={paymentPage === page ? 'active' : ''}
-        onClick={() => setPaymentPage(page)}
-      >
-        {page}
-      </button>
-    ))}
-
-  {/* ... перед останньою сторінкою */}
-  {paymentPage < totalPaymentPages - 3 && <span className="dots">...</span>}
-
-  {/* Остання сторінка */}
-  {totalPaymentPages > 1 && (
-    <button
-      className={paymentPage === totalPaymentPages ? 'active' : ''}
-      onClick={() => setPaymentPage(totalPaymentPages)}
-    >
-      {totalPaymentPages}
-    </button>
-  )}
-</div>
+                  {/* Поточне "вікно" */}
+                  {Array.from({ length: totalPaymentPages }, (_, i) => i + 1)
+                    .filter(
+                      page =>
+                        page !== 1 &&
+                        page !== totalPaymentPages &&
+                        page >= paymentPage - 2 &&
+                        page <= paymentPage + 2
+                    )
+                    .map(page => (
+                      <button
+                        key={page}
+                        className={paymentPage === page ? 'active' : ''}
+                        onClick={() => setPaymentPage(page)}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                  {paymentPage < totalPaymentPages - 3 && <span className="dots">...</span>}
+                  {totalPaymentPages > 1 && (
+                    <button
+                      className={paymentPage === totalPaymentPages ? 'active' : ''}
+                      onClick={() => setPaymentPage(totalPaymentPages)}
+                    >
+                      {totalPaymentPages}
+                    </button>
+                  )}
+                </div>
 
             </div>
             )}
+        {activeSection === 'export' && (
+          <ExportData
+            orders={orders}
+            drivers={drivers}
+            vehicles={vehicles}
+            payments={payments}
+          />
+        )}
 
       </main>
     </div>

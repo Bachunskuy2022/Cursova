@@ -6,25 +6,13 @@ import urllib
 from sqlalchemy import text
 import pandas as pd
 import io
+from flask import send_file
 app = Flask(__name__)
-@app.after_request
-def add_cors_headers(response):
-    response.headers['Access-Control-Allow-Origin'] = 'http://localhost:3000'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization'
-    response.headers['Access-Control-Allow-Methods'] = 'GET,PUT,POST,DELETE,OPTIONS'
-    return response
-
-CORS(app, resources={r"/*": {"origins": "*"}})
-
-
+CORS(app, origins="http://localhost:3000")
 bcrypt = Bcrypt(app)
 
-params = urllib.parse.quote_plus(
-    "DRIVER={ODBC Driver 17 for SQL Server};SERVER=DESKTOP-V6KTU57;DATABASE=BD;Trusted_Connection=yes"
-)
-
+params = urllib.parse.quote_plus("DRIVER={ODBC Driver 17 for SQL Server};SERVER=DESKTOP-V6KTU57;DATABASE=BD;Trusted_Connection=yes")
 app.config['SQLALCHEMY_DATABASE_URI'] = "mssql+pyodbc:///?odbc_connect=" + params
-
 
 db = SQLAlchemy(app)
 
@@ -49,7 +37,7 @@ def register():
     data = request.get_json()
     username = data.get('username')
     password = data.get('password')
-    role_id = data.get('role_id')  # очікується число: 1, 2, 3...
+    role_id = data.get('role_id')
 
     if not username or not password or not role_id:
         return jsonify({'error': 'Усі поля обов’язкові'}), 400
@@ -67,7 +55,6 @@ def register():
 
     return jsonify({'message': 'Реєстрація успішна'}), 201
 
-# 🔓 Вхід
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
@@ -85,7 +72,6 @@ def login():
 
     return jsonify({'error': 'Невірне ім’я або пароль'}), 401
 
-# 📄 Отримати список ролей (для React форми)
 @app.route('/roles', methods=['GET'])
 def get_roles():
     try:
@@ -107,7 +93,6 @@ def get_orders():
     limit = int(request.args.get('limit', 50))
     offset = (page - 1) * limit
 
-    # Основний запит
     query = text("""
         SELECT 
             o.OrderNumber,
@@ -150,7 +135,6 @@ def get_orders():
     total_count = db.session.execute(count_query).scalar()
 
     return jsonify({'orders': orders, 'totalCount': total_count})
-
 
 @app.route('/drivers', methods=['GET'])
 def get_drivers():
@@ -227,6 +211,7 @@ def get_vehicles():
     results = db.session.execute(query).fetchall()
     vehicles = [dict(row._mapping) for row in results]
     return jsonify(vehicles)
+
 @app.route('/payments', methods=['GET'])
 def get_paginated_payments():
     page = int(request.args.get('page', 1))
@@ -255,64 +240,184 @@ def get_paginated_payments():
     payments = [dict(row._mapping) for row in rows]
 
     return jsonify({'payments': payments, 'total': total_count})
+@app.route('/orders/last-number')
+def get_last_order_number():
+    result = db.session.execute(text("SELECT MAX(OrderNumber) AS lastNumber FROM Orders")).fetchone()
+    return jsonify({'lastNumber': result.lastNumber})
 
+@app.route('/employees')
+def get_employees():
+    employees = db.session.execute(text("SELECT EmployeeId, Surname + ' ' + Name AS FullName FROM Employees")).fetchall()
+    return jsonify([dict(row._mapping) for row in employees])
 
+@app.route('/postalcodes')
+def get_postalcodes():
+    postalcodes = db.session.execute(text("SELECT PostalCodeId, PostalCodeName FROM PostalCodes")).fetchall()
+    return jsonify([dict(row._mapping) for row in postalcodes])
+
+@app.route('/country', methods=['GET'])
+def get_countries():
+    query = text("SELECT CountryId, CountryName FROM Country")
+    result = db.session.execute(query).fetchall()
+    return jsonify([dict(row._mapping) for row in result])
+
+@app.route('/region')
+def get_regions_by_country():
+    country_id = request.args.get('countryId')
+    if not country_id:
+        return jsonify({'error': 'Не вказано ID країни'}), 400
+
+    query = text("SELECT RegionId, RegionName FROM Region WHERE CountryId = :country_id")
+    results = db.session.execute(query, {'country_id': country_id}).fetchall()
+    return jsonify([dict(row._mapping) for row in results])
+
+@app.route('/city', methods=['GET'])
+def get_cities_by_region():
+    region_id = request.args.get('regionId')
+
+    if not region_id:
+        return jsonify({'error': 'Не вказано regionId'}), 400
+
+    query = text("""
+        SELECT CItyId, CityName
+        FROM City
+        WHERE RegionId = :region_id
+    """)
+    results = db.session.execute(query, {'region_id': region_id}).fetchall()
+    return jsonify([dict(row._mapping) for row in results])
+
+@app.route('/postalcodes', methods=['GET'])
+def get_postal_codes_by_city():
+    city_id = request.args.get('cityId')
+
+    if not city_id:
+        return jsonify({'error': 'Не вказано cityId'}), 400
+
+    query = text("""
+        SELECT PostalCodeId, PostalCodeName
+        FROM PostalCodes
+        WHERE CityId = :city_id
+    """)
+    results = db.session.execute(query, {'city_id': city_id}).fetchall()
+    return jsonify([dict(row._mapping) for row in results])
+
+@app.route('/locations-by-postal', methods=['GET'])
+def get_locations_by_postal():
+    postal_id = request.args.get('postalId')
+    if not postal_id:
+        return jsonify({'error': 'Не вказано поштовий індекс'}), 400
+
+    query = text("""
+        SELECT LocationId, Address
+        FROM Locations
+        WHERE PostalId = :postal_id
+    """)
+    rows = db.session.execute(query, {'postal_id': postal_id}).fetchall()
+    return jsonify([dict(row._mapping) for row in rows])
+
+@app.route('/locations/smart-add', methods=['POST'])
+def smart_add_location():
+    data = request.get_json()
+    country_name = data.get('country')
+    region_name = data.get('region')
+    city_name = data.get('city')
+    postal_code_name = data.get('postalCode')
+    address = data.get('address')
+
+    if not all([country_name, region_name, city_name, postal_code_name, address]):
+        return jsonify({'error': 'Усі поля обов’язкові'}), 400
+
+    # 1. Country
+    country_id = db.session.execute(text("SELECT CountryId FROM Country WHERE CountryName = :name"), {'name': country_name}).scalar()
+    if not country_id:
+        db.session.execute(text("INSERT INTO Country (CountryName) VALUES (:name)"), {'name': country_name})
+        db.session.commit()
+        country_id = db.session.execute(text("SELECT CountryId FROM Country WHERE CountryName = :name"), {'name': country_name}).scalar()
+
+    # 2. Region
+    region_id = db.session.execute(text("SELECT RegionId FROM Region WHERE RegionName = :name AND CountryId = :cid"), {'name': region_name, 'cid': country_id}).scalar()
+    if not region_id:
+        db.session.execute(text("INSERT INTO Region (RegionName, CountryId) VALUES (:name, :cid)"), {'name': region_name, 'cid': country_id})
+        db.session.commit()
+        region_id = db.session.execute(text("SELECT RegionId FROM Region WHERE RegionName = :name AND CountryId = :cid"), {'name': region_name, 'cid': country_id}).scalar()
+
+    # 3. City
+    city_id = db.session.execute(text("SELECT CItyId FROM City WHERE CityName = :name AND RegionId = :rid"), {'name': city_name, 'rid': region_id}).scalar()
+    if not city_id:
+        db.session.execute(text("INSERT INTO City (CityName, RegionId) VALUES (:name, :rid)"), {'name': city_name, 'rid': region_id})
+        db.session.commit()
+        city_id = db.session.execute(text("SELECT CItyId FROM City WHERE CityName = :name AND RegionId = :rid"), {'name': city_name, 'rid': region_id}).scalar()
+
+    # 4. PostalCode
+    postal_id = db.session.execute(text("SELECT PostalCodeId FROM PostalCodes WHERE PostalCodeName = :name AND CityId = :cid"), {'name': postal_code_name, 'cid': city_id}).scalar()
+    if not postal_id:
+        db.session.execute(text("INSERT INTO PostalCodes (PostalCodeName, CityId) VALUES (:name, :cid)"), {'name': postal_code_name, 'cid': city_id})
+        db.session.commit()
+        postal_id = db.session.execute(text("SELECT PostalCodeId FROM PostalCodes WHERE PostalCodeName = :name AND CityId = :cid"), {'name': postal_code_name, 'cid': city_id}).scalar()
+
+    # 5. Location
+    location_id = db.session.execute(text("SELECT LocationId FROM Locations WHERE Address = :addr AND PostalId = :pid"), {'addr': address, 'pid': postal_id}).scalar()
+    if not location_id:
+        db.session.execute(text("INSERT INTO Locations (Address, PostalId) VALUES (:addr, :pid)"), {'addr': address, 'pid': postal_id})
+        db.session.commit()
+        location_id = db.session.execute(text("SELECT LocationId FROM Locations WHERE Address = :addr AND PostalId = :pid"), {'addr': address, 'pid': postal_id}).scalar()
+
+    return jsonify({'locationId': location_id})
+
+@app.route('/locations')
+def get_locations():
+    locations = db.session.execute(text("SELECT LocationId, Address FROM Locations")).fetchall()
+    return jsonify([dict(row._mapping) for row in locations])
+
+@app.route('/clients')
+def get_clients():
+    clients = db.session.execute(text("SELECT ClientId, Surname + ' ' + Name AS FullName FROM Client")).fetchall()
+    return jsonify([dict(row._mapping) for row in clients])
 
 @app.route('/export', methods=['POST'])
-def export_data():
+def export():
     data = request.json
-    tables = data.get('tables', [])
-    formats = data.get('formats', [])
+    table = data.get('table')
+    fmt = data.get('format')
 
-    if not tables or not formats:
-        return jsonify({'error': 'Не вказано таблиці або формати'}), 400
+    if not table or not fmt:
+        return jsonify({'error': 'Невірні дані'}), 400
+    export_queries = {
+            'Замовлення': """SELECT * FROM Orders""",
+            'Оплати': """SELECT ...""",
+            'Водії': """SELECT ...""",
+            'Автопарк': """SELECT ..."""
+        }
+    query_text = export_queries.get(table)
+    if not query_text:
+        return jsonify({'error': 'Невідома таблиця'}), 400
 
-    exported_files = {}
+    rows = db.session.execute(text(query_text)).fetchall()
+    df = pd.DataFrame([dict(row._mapping) for row in rows])
+    if df.empty:
+        return jsonify({'error': 'Немає даних'}), 404
 
-    for table in tables:
-        query = text(f"SELECT * FROM {table}")
-        rows = db.session.execute(query).fetchall()
-        df = pd.DataFrame(rows, columns=rows[0].keys() if rows else [])
+    buffer = io.BytesIO()
+    filename = f"{table}.{fmt.lower()}"
 
-        for fmt in formats:
-            filename = f"{table}.{fmt.lower()}"
-            buffer = io.BytesIO()
+    if fmt == "CSV":
+        df.to_csv(buffer, index=False)
+    elif fmt == "JSON":
+        buffer.write(df.to_json(orient='records', force_ascii=False).encode('utf-8'))
+    elif fmt == "Excel":
+        with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+            df.to_excel(writer, index=False, sheet_name=table)
+    elif fmt == "PDF":
+        df.to_csv(buffer, index=False)
+    else:
+        return jsonify({'error': 'Непідтримуваний формат'}), 400
 
-            if fmt == "CSV":
-                df.to_csv(buffer, index=False)
-            elif fmt == "JSON":
-                buffer.write(df.to_json(orient='records', force_ascii=False).encode('utf-8'))
-            elif fmt == "Excel":
-                with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-                    df.to_excel(writer, index=False, sheet_name=table)
-            elif fmt == "PDF":
-                # Поки як заміна PDF — CSV (для демонстрації)
-                df.to_csv(buffer, index=False)
+    buffer.seek(0)
+    return send_file(buffer, as_attachment=True, download_name=filename)
 
-            buffer.seek(0)
-            exported_files[filename] = buffer.read()
-
-    # Якщо один файл — повертаємо напряму
-    if len(exported_files) == 1:
-        name, content = next(iter(exported_files.items()))
-        return send_file(io.BytesIO(content), as_attachment=True, download_name=name)
-
-    # Якщо декілька — архівуємо у ZIP
-    import zipfile
-    zip_buffer = io.BytesIO()
-    with zipfile.ZipFile(zip_buffer, 'w') as zipf:
-        for name, content in exported_files.items():
-            zipf.writestr(name, content)
-    zip_buffer.seek(0)
-
-    return send_file(zip_buffer, as_attachment=True, download_name='exported_data.zip', mimetype='application/zip')
-
-
-# 🌐 Тест
 @app.route('/')
 def index():
     return 'Сервер працює!'
 
-# ▶️ Запуск
 if __name__ == '__main__':
     app.run(debug=True)

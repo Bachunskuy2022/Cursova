@@ -394,4 +394,170 @@ body {
     user-select: none;
     pointer-events: none;
   }
-      
+  .modal-card h3 {
+    margin-bottom: 16px;
+    font-size: 22px;
+    font-weight: 600;
+    color: #333;
+  }
+  
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    width: 100%;
+  }
+  
+  .form-grid input,
+  .form-grid select {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 14px;
+    box-sizing: border-box;
+  }
+  
+  
+  .form-grid input:focus,
+  .form-grid select:focus {
+    border-color: #5762D5;
+    outline: none;
+  }
+  
+  .button-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+  }
+  
+  .button-row button {
+    padding: 10px 20px;
+    font-size: 16px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+  
+  .button-row button[type="submit"] {
+    background-color: #5762D5;
+    color: #fff;
+  }
+  
+  .button-row .cancel-button {
+    background-color: #ccc;
+    color: #333;
+  }
+  .employee-select {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  
+  .employee-select input {
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 14px;
+  }
+  .autocomplete {
+    position: relative;
+    width: 100%;
+  }
+  
+  .modal-card {
+    width: 800px; /* ✅ зробити ширше */
+    background-color: #fff;
+    padding: 30px 40px;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  }
+  
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px; /* ✅ відступи між усіма інпутами */
+    margin-top: 20px;
+  }
+  
+  .form-grid input,
+  .form-grid select {
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 16px;
+    transition: border 0.2s ease;
+  }
+  
+  .form-grid input:focus,
+  .form-grid select:focus {
+    outline: none;
+    border-color: #5762D5; /* ✅ твій головний колір */
+  }
+  
+  .autocomplete-list {
+    margin-top: 2px;
+    padding: 0;
+    list-style: none;
+    border: 1px solid #ddd;
+    max-height: 150px;
+    overflow-y: auto;
+    border-radius: 6px;
+    background-color: white;
+    position: absolute;
+    z-index: 100;
+    width: 100%;
+  }
+  
+  .autocomplete-list li {
+    padding: 10px;
+    cursor: pointer;
+  }
+  
+  .autocomplete-list li:hover {
+    background-color: #f0f0f0;
+  }
+  
+  .location-autocomplete {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .location-autocomplete h4 {
+    margin: 0;
+    margin-top: 10px;
+  }
+  
+  .button-row {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+  }
+  
+  .add-button {
+    background-color: #5762D5;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  
+  .add-button:hover {
+    background-color: #424eb5;
+  }
+  
+  .cancel-button {
+    background-color: #eee;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  
+    

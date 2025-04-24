@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './ExportData.css';
+import axios from 'axios';
 
 const ExportData = () => {
   const availableTables = ['Замовлення', 'Оплати', 'Автопарк', 'Водії'];
@@ -22,9 +23,35 @@ const ExportData = () => {
   };
 
   const handleExport = () => {
-    console.log('Експортуємо:', selectedTables, selectedFormats);
-    // тут логіка виклику backend API
+    if (selectedTables.length === 0 || selectedFormats.length === 0) {
+      alert('Оберіть хоча б одну таблицю та один формат!');
+      return;
+    }
+  
+    selectedTables.forEach((table) => {
+      selectedFormats.forEach((format) => {
+        axios.post('http://localhost:5000/export', {
+          table,
+          format
+        }, {
+          responseType: 'blob'
+        })
+        .then(res => {
+          const blob = new Blob([res.data]);
+          const a = document.createElement('a');
+          a.href = window.URL.createObjectURL(blob);
+          a.download = `${table}.${format.toLowerCase()}`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        })
+        .catch(err => {
+          console.error(`❌ Помилка експорту (${table} - ${format}):`, err);
+        });
+      });
+    });
   };
+  
 
   return (
     <div className="export-container">
